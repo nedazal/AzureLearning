@@ -1,0 +1,26 @@
+﻿### Define Deployment Variables
+{
+$location = 'West Europe'
+$resourceGroupName = 'TEST'
+$resourceDeploymentName = 'armtemplate'
+$templatePath = $env:SystemDrive + '\' + 'test'
+$templateFile = 'simplePaas.json'
+$template = $templatePath + '\' + $templateFile
+}
+
+### Create Resource Group
+{
+New-AzureRmResourceGroup `
+    -Name $resourceGroupName `
+    -Location $location `
+    -Verbose -Force
+}
+
+### Deploy Resources
+{
+New-AzureRmResourceGroupDeployment `
+    -Name $resourceDeploymentName `
+    -ResourceGroupName $resourceGroupName `
+    -TemplateFile $template `
+    -Verbose -Force
+}
