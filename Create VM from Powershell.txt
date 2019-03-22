@@ -1,0 +1,37 @@
+## provide some variables
+$subscriptionId = '60683441-43c3-45a1-b1a8-01dcc583a150'
+$resourceGroupName = 'TEST'
+$snapshotName = 'NedaSnapshot'
+$osDiskName = 'web1_OsDisk_TEST'
+$virtualNetworkName = 'backuptestvnet735'
+$virtualMachineName = 'NEDA_TEST'
+$virtualMachineSize = 'Standard_D3_v2'
+
+## show existing subscription
+Select-AzureRmSubscription -SubscriptionId $SubscriptionId
+
+## provide snapshot
+$snapshot = Get-AzureRmSnapshot -ResourceGroupName $resourceGroupName -SnapshotName $snapshotName
+
+## create disk from snapshot
+$diskConfig = New-AzureRmDiskConfig -Location $snapshot.Location -SourceResourceId $snapshot.Id -CreateOption Copy
+$disk = New-AzureRmDisk -Disk $diskConfig -ResourceGroupName 'TEST' -DiskName $osDiskName
+
+## inicialize vm creation
+$VirtualMachine = New-AzureRmVMConfig -VMName $virtualMachineName -VMSize $virtualMachineSize
+$VirtualMachine = Set-AzureRmVMOSDisk -VM $VirtualMachine -ManagedDiskId $disk.Id -CreateOption Attach -Windows
+
+## create public ip for that machine
+$publicIp = New-AzureRmPublicIpAddress -Name ($VirtualMachineName.ToLower() + '_ip') -ResourceGroupName $resourceGroupName -Location $snapshot.Location -AllocationMethod Dynamic
+
+## virtual network where virtual machine will be hosted
+$vnet = Get-AzureRmVirtualNetwork -Name 'backuptestvnet735' -ResourceGroupName 'TEST'
+
+## pointing to subnets of virtual network
+$nic = New-AzNetworkInterface -Name ($VirtualMachineName.ToLower()+'_nic') -ResourceGroupName $resourceGroupName -Location $snapshot.Location -SubnetId $vnet.Subnets[0].Id -PublicIpAddressId $publicIp.Id
+
+## point network to VM
+$VirtualMachine = Add-AzureRmVMNetworkInterface -VM $VirtualMachine -Id $nic.Id
+
+## create VM
+New-AzureRmVM -VM $VirtualMachine -ResourceGroupName 'TEST' -Location $snapshot.Location
